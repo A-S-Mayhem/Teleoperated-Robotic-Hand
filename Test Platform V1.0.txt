@@ -1,0 +1,99 @@
+
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+#include <TFT.h>  
+
+// pin definitions for TFT display
+#define cs   6
+#define dc   9
+#define rst  8 // sus about using this with tft and transceiver
+
+// create an instance of the TFT library
+TFT tft = TFT(cs, dc, rst);  // Initialize the display
+
+RF24 radio(7, 8); // CE, CSN
+
+const byte address[6] = "00001";
+
+// Define potentiometers
+const int pot1 = A0;  
+const int pot2 = A1;  
+const int pot3 = A2;  
+
+// Define initial pot values
+int potValue1 = 1;
+int potValue2 = 1; 
+int potValue3 = 1;
+
+int prevpotValue1 = 0;
+int prevpotValue2 = 0; 
+int prevpotValue3 = 0;        
+
+// Define initial bar heights
+int barHeight1 = 0;  
+int barHeight2 = 0; 
+int barHeight3 = 0;     
+
+
+const int displayHeight = 128; // Height of the display
+
+void bar(int startX, int value, bool stroke){
+  if(stroke){
+    tft.stroke(255, 255, 255);
+    tft.fill(255, 255, 255);
+    tft.rect(0, startX-1, 128, 22); // Draw the vertical bar
+  }else{
+    tft.fill(255, 255, 255);
+    tft.rect(0, startX, value, 20); // Draw the vertical bar
+    tft.fill(0, 0, 0);
+    tft.rect(value, startX, 127-value, 20);
+  }
+}
+
+void setup() {
+
+  // Display Code
+  tft.begin();                        // Initialize the display
+  tft.background(0, 0, 0);            // Set background color to black
+  tft.setRotation(0);                 // 
+
+  bar(5, 0, true);
+  bar(35, 0, true);
+  bar(65, 0, true);
+  tft.noStroke();
+
+  // Radio Code
+  radio.begin();
+  radio.openWritingPipe(address);
+  radio.setPALevel(RF24_PA_MIN);
+  radio.stopListening();
+}
+
+void loop() {
+
+  // Read pot values
+  potValue1 = analogRead(pot1);
+  potValue2 = analogRead(pot2);
+  potValue3 = analogRead(pot3);
+
+  if(potValue1 != prevpotValue1) bar(5, potValue1 >> 3, false);
+  if(potValue2 != prevpotValue2) bar(35, potValue2 >> 3, false);
+  if(potValue3 != prevpotValue3) bar(65, potValue3 >> 3, false);
+
+  prevpotValue1 = potValue1;
+  prevpotValue2 = potValue2;
+  prevpotValue3 = potValue3;
+
+   // Create an array to hold the potentiometer values
+  int potValues[3] = { potValue1, potValue2, potValue3 };
+
+  // Send the pot values over the radio
+  radio.write(&potValues, sizeof(potValues));
+  
+
+  //delay(50);  // Small delay to make the changes smooth
+}
+
+
+

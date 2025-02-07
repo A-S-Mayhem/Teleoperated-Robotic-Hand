@@ -1,0 +1,62 @@
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+#include <Wire.h>
+#include <Adafruit_PWMServoDriver.h>
+
+RF24 radio(7, 8); // CE, CSN
+
+const byte address[6] = "00001";
+
+Adafruit_PWMServoDriver myServo = Adafruit_PWMServoDriver(0x40);
+
+void setup() {
+  Serial.begin(115200);
+  radio.begin();
+  radio.openReadingPipe(0, address);
+  radio.setPALevel(RF24_PA_MIN);
+  radio.startListening();
+
+  myServo.begin();
+  myServo.setPWMFreq(60); 
+}
+
+void loop() {
+  if (radio.available()) {
+    // Create an array to store the received pot values
+    int potValues[3] = {0, 0, 0};
+    int servoValues[3] = {0, 0, 0};
+
+    // Read the data into the array
+    radio.read(&potValues, sizeof(potValues));
+
+    // Print the received pot values to the Serial Monitor
+    Serial.print("Pot1: ");
+    Serial.print(potValues[0]);
+    Serial.print(" | Pot2: ");
+    Serial.print(potValues[1]);
+    Serial.print(" | Pot3: ");
+    Serial.println(potValues[2]);
+
+    // Map pot values to servo
+    for(int i=0; i<3; i++)
+    {
+      servoValues[i] = map(potValues[i], 0, 1023, 120, 700);
+    }
+
+    // Print the received pot values to the Serial Monitor
+    Serial.print("Servo1: ");
+    Serial.print(servoValues[0]);
+    Serial.print(" | Servo2: ");
+    Serial.print(servoValues[1]);
+    Serial.print(" | Servo3: ");
+    Serial.println(servoValues[2]);
+
+    myServo.setPWM(0, 0, servoValues[0]);
+    myServo.setPWM(1, 0, servoValues[1]);
+    myServo.setPWM(2, 0, servoValues[2]);
+
+
+    
+  }
+}
