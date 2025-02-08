@@ -1,0 +1,66 @@
+// Receives three potentiometer values over radio and 
+// maps them to their respective servo. 
+
+
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+#include <Wire.h>
+#include <Adafruit_PWMServoDriver.h>
+
+RF24 radio(7, 8); // CE, CSN
+
+const byte address[6] = "00001";
+
+Adafruit_PWMServoDriver board1 = Adafruit_PWMServoDriver(0x40); // Default address 0x40
+
+#define SERVOMIN  125 // Minimum pulse length count (out of 4096)
+#define SERVOMAX  625 // Maximum pulse length count (out of 4096)
+
+// Define the potentiometer pins for each servo
+const int potPins[] = {A0, A1, A2};
+const int numServos = sizeof(potPins) / sizeof(potPins[0]);
+
+void setup() {
+  Serial.begin(9600);
+  Serial.println("16-channel Servo independent control test!");
+
+  board1.begin();
+  board1.setPWMFreq(60); // Analog servos run at ~60 Hz updates
+
+  radio.begin();
+  radio.openReadingPipe(0, address);
+  radio.setPALevel(RF24_PA_MIN);
+  radio.startListening();
+}
+
+void loop() {
+
+  if (radio.available()) {
+    
+    // Create an array to store the received pot values
+    int potValues[3] = {0, 0, 0};
+    int servoValues[3] = {0, 0, 0};
+
+    // Read the data into the array
+    radio.read(&potValues, sizeof(potValues));
+
+    
+  for (int i = 0; i < numServos; i++) {
+    
+    int angle = map(potValues[i], 0, 1023, 0, 180); // Map the potentiometer value to an angle
+    int pulse = angleToPulse(angle); // Convert the angle to pulse width
+
+    board1.setPWM(i, 0, pulse); // Set the servo position
+
+    
+  }
+
+  delay(50); // Add a small delay for smoother updates
+}
+}
+
+int angleToPulse(int ang) {
+  // Converts an angle in degrees to a pulse width
+  return map(ang, 0, 180, SERVOMIN, SERVOMAX);
+}
